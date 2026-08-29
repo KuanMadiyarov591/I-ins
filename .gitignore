@@ -1,0 +1,9 @@
+.venv/
+__pycache__/
+*.pyc
+.DS_Store
+dist/
+build/
+gigachat.key
+runtime/payload.zip
+runtime/payload.zip.sha256
