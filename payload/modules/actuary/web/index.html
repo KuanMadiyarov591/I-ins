@@ -64,6 +64,7 @@
       <button type="button" class="tab" data-tab="runs" data-i18n="tab_runs">Прогоны</button>
       <button type="button" class="tab" data-tab="recommend" data-i18n="tab_recommend">Рекомендации</button>
       <button type="button" class="tab" data-tab="aihub" data-i18n="tab_aihub">AI Hub</button>
+      <button type="button" class="tab" data-tab="reports" data-i18n="tab_reports">Отчёты</button>
     </nav>
 
     <section id="tab-dashboard" class="tab-panel">
@@ -233,6 +234,41 @@
             </table>
           </div>
         </div>
+      </div>
+    </section>
+
+    <section id="tab-reports" class="tab-panel" hidden>
+      <div class="section-head">
+        <h2 data-i18n="rep_title">Аналитические отчёты</h2>
+      </div>
+      <div class="card widget">
+        <p class="muted small" data-i18n="rep_hint">Показатели считаются по данным кабинета, затем выбранная языковая модель объясняет их словами. В PDF расчёт и интерпретация разделены.</p>
+        <div class="row" style="gap:10px;flex-wrap:wrap;align-items:flex-end;margin-top:10px">
+          <label class="field">
+            <span data-i18n="rep_kind">Вид отчёта</span>
+            <select id="rep-kind"></select>
+          </label>
+          <label class="field">
+            <span data-i18n="rep_mode">Модель для интерпретации</span>
+            <select id="rep-mode">
+              <option value="auto" data-i18n="rag_mode_auto">Авто</option>
+              <option value="extractive" data-i18n="rag_mode_extractive">По базе</option>
+              <option value="ollama" data-i18n="rag_mode_ollama">Qwen RAG</option>
+              <option value="gigachat" data-i18n="rag_mode_gigachat">GigaChat</option>
+            </select>
+          </label>
+          <button class="btn primary" type="button" id="rep-build" data-i18n="rep_build">Построить отчёт</button>
+          <span id="rep-status" class="muted small"></span>
+        </div>
+        <p id="rep-desc" class="muted small" style="margin-top:8px"></p>
+      </div>
+      <div class="card widget" style="margin-top:16px">
+        <h3 data-i18n="rep_result">Результат</h3>
+        <div id="rep-result" class="muted small" data-i18n="rep_empty">Отчёт ещё не построен.</div>
+      </div>
+      <div class="card widget" style="margin-top:16px">
+        <h3 data-i18n="rep_recent">Готовые отчёты</h3>
+        <div id="rep-recent" class="muted small"></div>
       </div>
     </section>
 

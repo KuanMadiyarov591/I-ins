@@ -110,9 +110,107 @@
         if (state.lastReco) renderReco(state.lastReco);
       });
     }
+    if (name === "reports") loadReportKinds();
     if (name === "aihub") {
       renderRagThread();
       refreshRagStatus();
+    }
+  }
+
+  // ------------------------------------------------------------ отчёты
+  async function loadReportKinds() {
+    const sel = $("#rep-kind");
+    if (!sel) return;
+    try {
+      const data = await api("/api/report/kinds");
+      state.reportKinds = data.kinds || [];
+      sel.innerHTML = state.reportKinds
+        .map((k) => `<option value="${esc(k.id)}">${esc(k.title)}</option>`)
+        .join("");
+      paintReportDesc();
+      renderRecentReports(data.recent || []);
+    } catch (err) {
+      $("#rep-status").textContent = String(err.message || err);
+    }
+  }
+
+  function paintReportDesc() {
+    const sel = $("#rep-kind");
+    const box = $("#rep-desc");
+    if (!sel || !box) return;
+    const kind = (state.reportKinds || []).find((k) => k.id === sel.value);
+    box.textContent = kind ? kind.description : "";
+  }
+
+  function renderRecentReports(items) {
+    const box = $("#rep-recent");
+    if (!box) return;
+    if (!items.length) {
+      box.textContent = t("rep_none");
+      return;
+    }
+    box.innerHTML = items
+      .map(
+        (r) =>
+          `<div class="row" style="justify-content:space-between;padding:4px 0">
+             <span>${esc(r.created_at)} · ${esc(r.kind)} · ${Math.round(r.bytes / 1024)} КБ</span>
+             <a class="btn ghost" href="${esc(r.pdf_url)}" target="_blank" rel="noopener">${esc(t("rep_open"))}</a>
+           </div>`
+      )
+      .join("");
+  }
+
+  function renderReport(res) {
+    const box = $("#rep-result");
+    if (!box) return;
+    const tables = (res.sections || [])
+      .map((s) => {
+        const rows = s.table
+          ? `<table class="grid"><thead><tr>${s.table.columns
+              .map((c) => `<th>${esc(c)}</th>`)
+              .join("")}</tr></thead><tbody>${s.table.rows
+              .map((r) => `<tr>${r.map((c) => `<td>${esc(c)}</td>`).join("")}</tr>`)
+              .join("")}</tbody></table>`
+          : "";
+        const notes = (s.paragraphs || []).map((p) => `<p class="muted small">${esc(p)}</p>`).join("");
+        return `<h4>${esc(s.heading)}</h4>${notes}${rows}`;
+      })
+      .join("");
+    const interpretation = (res.interpretation || "")
+      .split(/\n\s*\n/)
+      .filter((p) => p.trim())
+      .map((p) => `<p>${esc(p.trim())}</p>`)
+      .join("");
+    box.innerHTML = `
+      <div class="row" style="justify-content:space-between;align-items:center;margin-bottom:8px">
+        <strong>${esc(res.title)}</strong>
+        <a class="btn primary" href="${esc(res.pdf_url)}" target="_blank" rel="noopener">${esc(t("rep_pdf"))}</a>
+      </div>
+      <p class="muted small">${esc(t("rep_by"))}: ${esc(res.lm_model || "—")} · ${esc(res.lm_mode || "—")} · ${esc(res.created_at)}</p>
+      ${tables}
+      <h4>${esc(t("rep_interpretation"))}</h4>
+      ${interpretation || `<p class="muted small">${esc(t("rep_no_text"))}</p>`}`;
+  }
+
+  async function buildReport() {
+    const btn = $("#rep-build");
+    const status = $("#rep-status");
+    if (!btn) return;
+    btn.disabled = true;
+    status.textContent = t("rep_working");
+    try {
+      const res = await api("/api/report/build", {
+        method: "POST",
+        body: JSON.stringify({ kind: $("#rep-kind").value, mode: $("#rep-mode").value }),
+      });
+      renderReport(res);
+      status.textContent = t("rep_done");
+      const recent = await api("/api/report/recent");
+      renderRecentReports(recent.recent || []);
+    } catch (err) {
+      status.textContent = String(err.message || err);
+    } finally {
+      btn.disabled = false;
     }
   }
 
@@ -679,6 +777,9 @@
     localStorage.removeItem("ad_token");
     showApp(false);
   });
+
+  $("#rep-build")?.addEventListener("click", buildReport);
+  $("#rep-kind")?.addEventListener("change", paintReportDesc);
 
   $$(".tabs > .tab").forEach((btn) => {
     btn.addEventListener("click", () => setTab(btn.dataset.tab));

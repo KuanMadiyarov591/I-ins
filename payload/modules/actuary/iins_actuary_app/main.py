@@ -12,6 +12,7 @@ from iins_actuary_app.api import (
     dashboard_routes,
     premiums_routes,
     recommend_routes,
+    report_routes,
     runs_routes,
 )
 from iins_actuary_app.config import ROOT, get_settings
@@ -52,6 +53,7 @@ def create_app() -> FastAPI:
     app.include_router(runs_routes.router)
     app.include_router(recommend_routes.router)
     app.include_router(assistant_routes.router)
+    app.include_router(report_routes.router)
 
     @app.get("/health")
     def health() -> dict:

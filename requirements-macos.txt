@@ -29,3 +29,5 @@ joblib>=1.3,<2
 pypdf>=4,<6
 Faker>=24,<41
 prometheus-fastapi-instrumentator>=7,<8
+# PDF-отчёты кабинета актуария
+reportlab>=4,<5
