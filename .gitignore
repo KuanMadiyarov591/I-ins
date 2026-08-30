@@ -7,3 +7,5 @@ build/
 gigachat.key
 runtime/payload.zip
 runtime/payload.zip.sha256
+*-wal
+*-shm

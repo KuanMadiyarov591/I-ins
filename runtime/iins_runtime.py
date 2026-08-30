@@ -172,7 +172,6 @@ def gigachat_key() -> str:
         if value:
             return value
     candidates = (
-        data_root() / "gigachat.key",          # сюда его кладёт I-ins.command
         package_root().parent / "gigachat.key",
         package_root() / "gigachat.key",
         Path.home() / ".i-ins" / "gigachat.key",
@@ -219,6 +218,41 @@ SMOKE_QUESTIONS = {
 
 def smoke_question(key: str) -> str:
     return SMOKE_QUESTIONS.get(key, SMOKE_QUESTION_DEFAULT)
+
+
+def payload_archive_optional() -> Path | None:
+    """payload.zip, если он есть; None — если комплект лежит распакованным."""
+    override = os.getenv("IINS_PAYLOAD_ZIP")
+    candidate = Path(override).expanduser().resolve() if override else package_root() / "payload.zip"
+    return candidate if candidate.is_file() else None
+
+
+def inplace_payload() -> Path | None:
+    """Комплект, лежащий распакованным рядом с программой (как в репозитории)."""
+    override = os.getenv("IINS_PAYLOAD_DIR")
+    candidates = [Path(override).expanduser()] if override else []
+    candidates += [package_root().parent / "payload", package_root() / "payload"]
+    for path in candidates:
+        try:
+            if (path / "modules").is_dir():
+                return path.resolve()
+        except OSError:
+            continue
+    return None
+
+
+def verify_inplace(payload: Path) -> None:
+    """Проверяет состав распакованного комплекта до запуска кабинетов."""
+    missing = []
+    for service in SERVICES:
+        main = payload / "modules" / service.key / service.package / "main.py"
+        if not main.is_file():
+            missing.append(f"{service.key} ({main.name} не найден)")
+    if missing:
+        raise RuntimeError(
+            "Комплект в " + str(payload) + " неполный: " + ", ".join(missing) + ".\n"
+            "Скачайте репозиторий заново: git clone ... или распакуйте архив целиком."
+        )
 
 
 def runtime_dir(root: Path) -> Path:
@@ -373,9 +407,23 @@ def _verify_tree(root: Path, manifest: dict[str, Any]) -> None:
 def ensure_runtime(root: Path, *, force: bool = False,
                    progress: Callable[[str], None] | None = None) -> Path:
     """Ставит payload в ~/Library/Application Support/I-ins/runtime-<версия>."""
+    # Комплект, лежащий распакованным, используется как есть: без сборки архива
+    # и без второй копии в папке данных — это экономит около 400 МБ.
+    payload_dir = inplace_payload()
+    archive_path = payload_archive_optional()
+    if payload_dir is not None and archive_path is None:
+        if progress:
+            progress("Комплект используется из папки payload — архив не нужен")
+        verify_inplace(payload_dir)
+        return payload_dir
+    if archive_path is None:
+        raise FileNotFoundError(
+            "Не найден комплект: нет ни runtime/payload.zip, ни папки payload/modules.\n"
+            "Распакуйте архив I-ins полностью или склонируйте репозиторий целиком."
+        )
+
     target = runtime_dir(root)
     marker = target / ".iins-runtime-ready.json"
-    archive_path = payload_archive()
     info = archive_path.stat()
 
     if not force and marker.is_file():
@@ -747,7 +795,8 @@ def run_self_check(force_extract: bool) -> int:
         prepare_state(root)
         print("[ок] Рабочая папка доступна на запись")
         runtime = ensure_runtime(root, force=force_extract, progress=lambda text: print(f"      {text}"))
-        print(f"[ок] Комплект установлен: {runtime}")
+        origin = "используется на месте" if inplace_payload() == runtime else "установлен"
+        print(f"[ок] Комплект {origin}: {runtime}")
         for note in check_models(runtime):
             print(f"      {note}")
         print("[ок] ML-модели загружаются")
