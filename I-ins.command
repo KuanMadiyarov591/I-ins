@@ -57,6 +57,19 @@ echo "Архитектура:     $(uname -m)"
 echo "macOS:           $(sw_vers -productVersion 2>/dev/null || echo неизвестно)"
 echo
 
+# --- 1a. Свободное место ----------------------------------------------------
+# Окружению Python нужно около 1.5 ГБ. Комплект вторую копию не занимает:
+# он используется прямо из папки payload.
+NEED_MB=2048
+FREE_MB="$(df -m "$HOME" 2>/dev/null | awk 'NR==2 {print $4}')"
+if [[ -n "${FREE_MB:-}" && "$FREE_MB" =~ ^[0-9]+$ ]]; then
+  echo "Свободно на диске: ${FREE_MB} МБ (нужно не меньше ${NEED_MB} МБ)"
+  if (( FREE_MB < NEED_MB )); then
+    fail "Мало места на диске: свободно ${FREE_MB} МБ, нужно не меньше ${NEED_MB} МБ. Освободите место и запустите снова."
+  fi
+  echo
+fi
+
 # --- 2. Подходящий Python ---------------------------------------------------
 python_ok() {
   local bin="$1"
@@ -101,17 +114,6 @@ fi
 echo "Python: $PYTHON_BIN"
 "$PYTHON_BIN" --version
 echo
-
-# --- 2a. Комплект из исходного дерева ---------------------------------------
-# В репозитории комплект лежит распакованным (payload/modules): так он проходит
-# на GitHub без Git LFS. Архив payload.zip собирается здесь один раз.
-if [[ ! -f "$RUNTIME_SRC/payload.zip" ]]; then
-  echo "Сборка комплекта из payload/modules — это разовый шаг, 1–2 минуты…"
-  "$PYTHON_BIN" "$SOURCE_DIR/tools/make_payload.py" "$SOURCE_DIR/payload" \
-    --out "$RUNTIME_SRC/payload.zip" || fail "Не удалось собрать payload.zip из папки payload/modules."
-  echo
-fi
-
 
 # --- 3. Виртуальное окружение ----------------------------------------------
 if [[ -x "$VENV_DIR/bin/python" ]]; then
@@ -231,7 +233,7 @@ export PYTHONDONTWRITEBYTECODE="1"
 export PYTHONUTF8="1"
 
 echo "Проверка комплекта, моделей и базы знаний…"
-echo "При первом запуске распаковывается около 260 МБ — это занимает 1–3 минуты."
+echo "Комплект берётся из папки payload — вторая копия на диск не пишется."
 echo
 if ! "$VENV_PY" "$RUNTIME_SRC/iins_runtime.py" --self-check; then
   fail "Самопроверка $APP_NAME не пройдена. Подробности в журнале: $BOOTSTRAP_LOG"
