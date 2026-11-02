@@ -4,7 +4,7 @@
     python3 tools/make_payload.py <папка-с-modules> [--out runtime/payload.zip]
 
 Скрипт нужен только если вы меняете исходники модулей. Для обычной сборки
-и запуска I-ins он не требуется — готовый payload.zip уже лежит в runtime/.
+и запуска I-ins он не требуется: комплект берётся прямо из payload/modules.
 """
 
 from __future__ import annotations
